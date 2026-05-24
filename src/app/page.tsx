@@ -1,150 +1,75 @@
-'use client';
+import Link from 'next/link';
 
-import { useState } from 'react';
-
-// CRS Mock Logic Calculator
-const calculateScore = (answers: { age: string; education: string; language: string; experience: string }) => {
-  let score = 0;
-  // Age
-  if (answers.age === '18-29') score += 110;
-  else if (answers.age === '30-39') score += 70;
-  else if (answers.age === '40-44') score += 40;
-  else if (answers.age === '45+') score += 0;
-
-  // Education
-  if (answers.education === 'masters_phd') score += 135;
-  else if (answers.education === 'bachelors') score += 120;
-  else if (answers.education === 'high_school') score += 30;
-
-  // Language (IELTS)
-  if (answers.language === 'excellent') score += 136;
-  else if (answers.language === 'good') score += 90;
-  else if (answers.language === 'basic') score += 40;
-
-  // Experience
-  if (answers.experience === '3_plus') score += 50;
-  else if (answers.experience === '1_2') score += 25;
-  else if (answers.experience === 'none') score += 0;
-
-  return score;
-};
-
-export default function EligibilityTest() {
-  const [step, setStep] = useState(1);
-  const [answers, setAnswers] = useState({
-    age: '',
-    education: '',
-    language: '',
-    experience: ''
-  });
-
-  const handleSelect = (field: string, value: string) => {
-    setAnswers({ ...answers, [field]: value });
-  };
-
-  const nextStep = () => {
-    if (step < 5) setStep(step + 1);
-  };
-
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div className="animate-fade-in">
-            <h1 className="text-3xl font-bold mb-6">What is your age?</h1>
-            <div className="space-y-3">
-              {['18-29', '30-39', '40-44', '45+'].map((val) => (
-                <button key={val} onClick={() => handleSelect('age', val)} className={`w-full text-left p-4 border rounded-xl ${answers.age === val ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                  {val === '18-29' ? '18 - 29 years old (Max Points)' : `${val} years old`}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      case 2:
-        return (
-          <div className="animate-fade-in">
-            <h1 className="text-3xl font-bold mb-6">Highest level of education?</h1>
-            <div className="space-y-3">
-              <button onClick={() => handleSelect('education', 'masters_phd')} className={`w-full text-left p-4 border rounded-xl ${answers.education === 'masters_phd' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>Master's or Ph.D.</button>
-              <button onClick={() => handleSelect('education', 'bachelors')} className={`w-full text-left p-4 border rounded-xl ${answers.education === 'bachelors' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>Bachelor's Degree</button>
-              <button onClick={() => handleSelect('education', 'high_school')} className={`w-full text-left p-4 border rounded-xl ${answers.education === 'high_school' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>High School Diploma</button>
-            </div>
-          </div>
-        );
-      case 3:
-        return (
-          <div className="animate-fade-in">
-            <h1 className="text-3xl font-bold mb-6">English Proficiency (IELTS)?</h1>
-            <div className="space-y-3">
-              <button onClick={() => handleSelect('language', 'excellent')} className={`w-full text-left p-4 border rounded-xl ${answers.language === 'excellent' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>Excellent (CLB 9+)</button>
-              <button onClick={() => handleSelect('language', 'good')} className={`w-full text-left p-4 border rounded-xl ${answers.language === 'good' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>Good (CLB 7-8)</button>
-              <button onClick={() => handleSelect('language', 'basic')} className={`w-full text-left p-4 border rounded-xl ${answers.language === 'basic' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>Basic (CLB 4-6)</button>
-            </div>
-          </div>
-        );
-      case 4:
-        return (
-          <div className="animate-fade-in">
-            <h1 className="text-3xl font-bold mb-6">Skilled Work Experience?</h1>
-            <div className="space-y-3">
-              <button onClick={() => handleSelect('experience', '3_plus')} className={`w-full text-left p-4 border rounded-xl ${answers.experience === '3_plus' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>3 or more years</button>
-              <button onClick={() => handleSelect('experience', '1_2')} className={`w-full text-left p-4 border rounded-xl ${answers.experience === '1_2' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>1 to 2 years</button>
-              <button onClick={() => handleSelect('experience', 'none')} className={`w-full text-left p-4 border rounded-xl ${answers.experience === 'none' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>Less than 1 year</button>
-            </div>
-          </div>
-        );
-      case 5:
-        // PAYWALL STATE
-        return (
-          <div className="text-center animate-fade-in">
-            <div className="mx-auto w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
-               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Test Complete!</h2>
-            <p className="text-gray-600 mb-6">We have calculated your exact CRS score based on the latest IRCC draw.</p>
-            
-            <div className="bg-white p-6 rounded-xl border shadow-sm mb-6 text-left">
-                <h3 className="font-bold text-gray-900 mb-4">Unlock your results to get:</h3>
-                <ul className="space-y-3 text-sm text-gray-600">
-                    <li>✅ Your exact CRS Score vs current cutoff</li>
-                    <li>✅ Roadmap to boost your score by up to 50 points</li>
-                    <li>✅ PDF Document checklist for your profile</li>
-                </ul>
-            </div>
-
-            {/* STRIPE CHECKOUT BUTTON */}
-            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2">
-                Unlock Results for $19.00
-            </button>
-            <p className="mt-4 text-xs text-gray-400">Secure payment processed by Stripe</p>
-          </div>
-        );
-    }
-  };
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-        {step < 5 && (
-          <div className="bg-gray-100 h-2 w-full">
-            <div className={`bg-blue-600 h-2 transition-all duration-500`} style={{ width: `${(step / 4) * 100}%` }}></div>
-          </div>
-        )}
-        <div className="p-8 sm:p-12 text-gray-900">
-          {step < 5 && <div className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-2">Step {step} of 4</div>}
-          
-          {renderStep()}
-
-          {step < 5 && (
-            <div className="mt-10 flex justify-end">
-              <button onClick={nextStep} className="bg-gray-900 hover:bg-black text-white font-semibold py-3 px-8 rounded-lg shadow-md transition-transform active:scale-95">
-                Continue
-              </button>
+    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100">
+      {/* Navigation */}
+      <nav className="border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <div className="flex-shrink-0 flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shadow-sm">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+              <span className="font-bold text-xl tracking-tight">VisaLogic</span>
             </div>
-          )}
+            <div>
+              <Link href="/assessment" className="text-sm font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-full transition-colors">
+                Take Assessment &rarr;
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      </nav>
+
+      {/* Hero Section */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 text-center">
+        <div className="inline-block mb-6 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold tracking-wide">
+          Updated for 2026 IRCC Draw Criteria
+        </div>
+        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
+          Calculate your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Canada Express Entry</span> score in 60 seconds.
+        </h1>
+        <p className="text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
+          Don't guess your chances. Find out exactly where you stand in the Comprehensive Ranking System (CRS) and get a personalized roadmap to secure your Invitation to Apply.
+        </p>
+        <div className="flex flex-col sm:flex-row justify-center gap-4 items-center">
+          <Link href="/assessment" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-xl shadow-lg shadow-blue-200 transition-transform hover:scale-105 text-lg">
+            Start Free Assessment
+          </Link>
+          <span className="text-sm text-gray-400">Takes less than 1 minute</span>
+        </div>
+        
+        {/* Features Grid */}
+        <div className="mt-32 grid md:grid-cols-3 gap-12 text-left">
+          <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-6 shadow-sm">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <h3 className="text-xl font-bold mb-3">Instant CRS Score</h3>
+            <p className="text-gray-600">Our algorithm mirrors the official IRCC criteria to give you a highly accurate estimate instantly without waiting.</p>
+          </div>
+          <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+            <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-6 shadow-sm">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+            </div>
+            <h3 className="text-xl font-bold mb-3">Personalized Roadmap</h3>
+            <p className="text-gray-600">Discover exactly which areas (like IELTS scores or work experience) to prioritize to boost your points.</p>
+          </div>
+          <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-6 shadow-sm">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h3 className="text-xl font-bold mb-3">100% Private</h3>
+            <p className="text-gray-600">Your data is never shared with third parties. We calculate everything securely to protect your privacy.</p>
+          </div>
+        </div>
+      </main>
+      
+      {/* Footer */}
+      <footer className="border-t border-gray-100 py-12 text-center text-gray-500 text-sm">
+        <p>&copy; 2026 VisaLogic. Not affiliated with the Canadian Government.</p>
+      </footer>
     </div>
   );
 }
