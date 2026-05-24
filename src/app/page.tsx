@@ -31,7 +31,7 @@ export default function LandingPage() {
         <div className="inline-flex mb-8 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-sm font-semibold tracking-wide">
           Updated for 2026 IRCC Draw Criteria
         </div>
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
+        <h1 className="text-5xl md:text-7xl font-extrabold font-heading tracking-tight mb-8 leading-tight">
           Calculate your <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">Canada Express Entry</span> score in 60 seconds.
         </h1>
         <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
