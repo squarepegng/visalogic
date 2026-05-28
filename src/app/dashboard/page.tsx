@@ -117,7 +117,7 @@ export default function Dashboard() {
             
             <div className="hidden md:flex items-center gap-1 text-sm font-medium text-slate-500">
               <Link href="/dashboard" className="px-3 py-1.5 bg-slate-100 text-slate-900 rounded-md transition">Overview</Link>
-              <Link href="#" className="px-3 py-1.5 hover:text-slate-900 transition">Customers</Link>
+              <span className="px-3 py-1.5 text-slate-400 cursor-not-allowed">Customers</span>
               <Link href="/settings" className="px-3 py-1.5 hover:text-slate-900 transition">Settings</Link>
             </div>
           </div>
