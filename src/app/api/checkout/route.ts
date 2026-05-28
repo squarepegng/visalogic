@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const { email, userId } = await req.json();
 
     // Paystack Initialize Transaction API
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -17,6 +17,7 @@ export async function POST(req: Request) {
         plan: "PLN_gacsnk3x4ak6mzr", // Auto-generated Paystack Plan (ReviewMantis Pro)
         callback_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://visalogic-flax.vercel.app'}/dashboard?success=true`,
         metadata: {
+          userId: userId, // Pass the exact database ID to Paystack so it hands it back to our Webhook
           custom_fields: [
             {
               display_name: "Action",

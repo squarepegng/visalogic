@@ -22,27 +22,29 @@ export async function POST(req: Request) {
     if (event.event === 'charge.success') {
       const email = event.data.customer.email;
       const customerCode = event.data.customer.customer_code;
+      const userId = event.data.metadata?.userId;
       
-      // 1. Find user UUID from Auth
-      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-      const user = users.find(u => u.email === email);
-      if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      if (!userId) {
+        console.error('No userId found in Paystack metadata for email:', email);
+        return NextResponse.json({ error: 'Missing userId in metadata' }, { status: 400 });
+      }
 
-      // Update the user's profile in Supabase to unlock the dashboard
+      // Upsert the user's profile: If they don't have a profile row yet, this creates it and sets them to active!
       const { error } = await supabaseAdmin
         .from('profiles')
-        .update({ 
-          stripe_subscription_status: 'active', // Re-using this column name for simplicity
-          stripe_customer_id: customerCode
-        })
-        .eq('id', user.id);
+        .upsert({ 
+          id: userId,
+          stripe_subscription_status: 'active',
+          stripe_customer_id: customerCode,
+          google_review_link: null
+        });
         
       if (error) {
-        console.error('Supabase update error:', error);
+        console.error('Supabase upsert error:', error);
         return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
       }
       
-      console.log('Successfully unlocked dashboard for:', email);
+      console.log(`Successfully unlocked dashboard for: ${email} (ID: ${userId})`);
     }
 
     return NextResponse.json({ received: true });
