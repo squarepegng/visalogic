@@ -1,12 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function Dashboard() {
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+      } else {
+        setUserEmail(session.user.email || "");
+      }
+    };
+    checkUser();
+  }, [router]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,12 +53,19 @@ export default function Dashboard() {
     }
   };
 
+  if (!userEmail) {
+    return <div className="min-h-screen flex items-center justify-center">Loading dashboard...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <nav className="border-b bg-white p-4">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="font-bold text-xl text-blue-600">🚀 ReviewRocket Dashboard</div>
-          <Link href="/" className="text-slate-500 hover:text-slate-800">Sign Out</Link>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-500">{userEmail}</span>
+            <button onClick={handleSignOut} className="text-sm font-medium text-slate-600 hover:text-slate-900">Sign Out</button>
+          </div>
         </div>
       </nav>
 
@@ -52,8 +80,8 @@ export default function Dashboard() {
             <p className="text-3xl font-bold text-slate-900">~0</p>
           </div>
           <div className="bg-white p-6 rounded-xl border shadow-sm">
-            <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Subscription</h3>
-            <p className="text-lg font-bold text-green-600">Active ($29/mo)</p>
+            <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Account Status</h3>
+            <p className="text-lg font-bold text-green-600">Active Beta</p>
           </div>
         </div>
 
