@@ -21,7 +21,21 @@ export default function Dashboard() {
         setUserEmail(session.user.email || "");
       }
     };
+
+    // Listen for auth state changes (like when clicking the email link)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.push("/login");
+      } else {
+        setUserEmail(session.user.email || "");
+      }
+    });
+
     checkUser();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   const handleSignOut = async () => {
@@ -54,7 +68,7 @@ export default function Dashboard() {
   };
 
   if (!userEmail) {
-    return <div className="min-h-screen flex items-center justify-center">Loading dashboard...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-medium">Authenticating...</div>;
   }
 
   return (
