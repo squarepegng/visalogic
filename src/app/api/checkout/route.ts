@@ -16,6 +16,15 @@ export async function POST(req: Request) {
         amount: 2900 * 100, // $29 (or NGN equivalent, Paystack takes lowest denomination)
         plan: "PLN_gacsnk3x4ak6mzr", // Auto-generated Paystack Plan (ReviewMantis Pro)
         callback_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://visalogic-flax.vercel.app'}/dashboard?success=true`,
+        metadata: {
+          custom_fields: [
+            {
+              display_name: "Action",
+              variable_name: "action",
+              value: "subscription_payment"
+            }
+          ]
+        }
       }),
     });
 

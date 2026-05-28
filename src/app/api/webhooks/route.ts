@@ -28,11 +28,11 @@ export async function POST(req: Request) {
       const user = users.find(u => u.email === email);
       if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-      // 2. Update profile by UUID
+      // Update the user's profile in Supabase to unlock the dashboard
       const { error } = await supabaseAdmin
         .from('profiles')
         .update({ 
-          stripe_subscription_status: 'active',
+          stripe_subscription_status: 'active', // Re-using this column name for simplicity
           stripe_customer_id: customerCode
         })
         .eq('id', user.id);
