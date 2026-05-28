@@ -50,9 +50,8 @@ export async function POST(req: Request) {
         .upsert({ 
           id: userId,
           stripe_subscription_status: 'active',
-          stripe_customer_id: customerCode,
-          google_review_link: null
-        });
+          stripe_customer_id: customerCode
+        }, { onConflict: 'id' });
         
       if (error) {
         console.error('Supabase upsert error:', error);
