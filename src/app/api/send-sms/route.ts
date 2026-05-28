@@ -3,13 +3,16 @@ import twilio from 'twilio';
 
 export async function POST(req: Request) {
   try {
-    const { phoneNumber } = await req.json();
+    const { phoneNumber, message } = await req.json();
 
     if (!phoneNumber) {
       return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
     }
+    
+    if (!message) {
+      return NextResponse.json({ error: 'Message content is required. Please check your settings.' }, { status: 400 });
+    }
 
-    // We pull these from Vercel Environment Variables for security
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
@@ -20,13 +23,13 @@ export async function POST(req: Request) {
 
     const client = twilio(accountSid, authToken);
 
-    const message = await client.messages.create({
-      body: "Thanks for choosing us! We'd love if you could leave a quick 5-star review here: https://g.page/r/example/review",
+    const twilioMsg = await client.messages.create({
+      body: message,
       from: twilioPhone,
       to: phoneNumber,
     });
 
-    return NextResponse.json({ success: true, messageId: message.sid });
+    return NextResponse.json({ success: true, messageId: twilioMsg.sid });
   } catch (error: any) {
     console.error("Twilio Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
