@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { 
   Send, 
@@ -12,17 +12,21 @@ import {
   MessageSquarePlus, 
   CheckCircle2, 
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  CreditCard
 } from "lucide-react";
 
 export default function Dashboard() {
   const [phone, setPhone] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [googleLink, setGoogleLink] = useState("");
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>("inactive");
   
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -33,19 +37,20 @@ export default function Dashboard() {
         return;
       }
       setUserEmail(session.user.email || "");
+      setUserId(session.user.id);
 
-      // Fetch user's custom template and link
+      // Fetch user's profile and sub status
       const { data: profile } = await supabase
         .from('profiles')
-        .select('default_message, google_review_link')
+        .select('default_message, google_review_link, stripe_subscription_status')
         .eq('id', session.user.id)
         .single();
 
       if (profile) {
         if (profile.default_message) setCustomMessage(profile.default_message);
         if (profile.google_review_link) setGoogleLink(profile.google_review_link);
+        if (profile.stripe_subscription_status) setSubscriptionStatus(profile.stripe_subscription_status);
       } else {
-        // Fallback if they haven't visited settings yet
         setCustomMessage("Thanks for choosing us! We'd love if you could leave a quick 5-star review here:");
       }
     };
@@ -56,6 +61,26 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push("/login");
+  };
+
+  const handleCheckout = async () => {
+    try {
+      setStatus("loading");
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail, userId: userId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url; // Redirect to Stripe
+      } else {
+        throw new Error(data.error || "Failed to create checkout session");
+      }
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMessage(err.message);
+    }
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -103,6 +128,60 @@ export default function Dashboard() {
     );
   }
 
+  // --- THE PAYWALL ---
+  if (subscriptionStatus !== 'active') {
+    return (
+      <div className="min-h-screen bg-[#F7F9FC] font-sans text-slate-900 flex flex-col">
+        <nav className="bg-white border-b border-slate-200 p-4">
+          <div className="max-w-6xl mx-auto flex justify-between items-center">
+            <div className="font-bold text-lg flex items-center gap-2">
+              <div className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center shadow-sm">
+                <Send size={16} />
+              </div>
+              ReviewRocket
+            </div>
+            <button onClick={handleSignOut} className="text-sm font-medium text-slate-600 hover:text-slate-900">Sign Out</button>
+          </div>
+        </nav>
+        
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-white p-10 rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CreditCard size={32} />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">Activate Your Account</h1>
+            <p className="text-slate-500 mb-8 leading-relaxed">
+              You are one step away from putting your Google Reviews on autopilot. Upgrade to Pro to unlock the SMS dashboard.
+            </p>
+            
+            <div className="bg-slate-50 rounded-xl p-6 mb-8 text-left border border-slate-100">
+              <div className="flex justify-between items-center mb-4">
+                <span className="font-semibold text-slate-900">ReviewRocket Pro</span>
+                <span className="text-xl font-bold">$29<span className="text-sm font-normal text-slate-500">/mo</span></span>
+              </div>
+              <ul className="space-y-3 text-sm text-slate-600">
+                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-green-500" /> Unlimited SMS requests</li>
+                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-green-500" /> Custom message templates</li>
+                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-green-500" /> Auto-appended review links</li>
+              </ul>
+            </div>
+
+            <button 
+              onClick={handleCheckout}
+              disabled={status === "loading"}
+              className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition active:scale-[0.98] disabled:opacity-50 shadow-md"
+            >
+              {status === "loading" ? "Connecting to secure checkout..." : "Upgrade to Pro"}
+            </button>
+            <p className="mt-4 text-xs text-slate-400">Secure checkout provided by Stripe.</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // --- THE FULL DASHBOARD ---
   return (
     <div className="min-h-screen bg-[#F7F9FC] font-sans text-slate-900">
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-10">
@@ -125,7 +204,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 text-sm px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-slate-600">
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Test Mode
+              Pro Active
             </div>
             <div className="h-8 w-8 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full text-white flex items-center justify-center text-sm font-bold shadow-sm ring-2 ring-white">
               {userEmail.charAt(0).toUpperCase()}
@@ -145,7 +224,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ... (Metrics Grid stays the same) ... */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col justify-between">
             <div className="flex justify-between items-start mb-4">
@@ -174,13 +252,13 @@ export default function Dashboard() {
               <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600">
                 <Settings size={20} />
               </div>
-              <span className="text-xs font-semibold px-2 py-1 bg-slate-100 text-slate-600 rounded-full">
-                Developer Mode
+              <span className="text-xs font-semibold px-2 py-1 bg-green-50 text-green-700 rounded-full">
+                Pro
               </span>
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500 mb-1">Current Plan</p>
-              <h3 className="text-xl font-semibold text-slate-900 tracking-tight">Free Trial</h3>
+              <h3 className="text-xl font-semibold text-slate-900 tracking-tight">$29/mo</h3>
             </div>
           </div>
         </div>
