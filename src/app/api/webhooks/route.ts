@@ -22,14 +22,29 @@ export async function POST(req: Request) {
     if (event.event === 'charge.success') {
       const email = event.data.customer.email;
       const customerCode = event.data.customer.customer_code;
-      const userId = event.data.metadata?.userId;
+      
+      // Paystack stores our passed metadata inside custom_fields or directly on metadata depending on initialization structure.
+      // We check both places to safely extract the userId.
+      let userId = event.data.metadata?.userId;
+      if (!userId && event.data.metadata?.custom_fields) {
+         const userField = event.data.metadata.custom_fields.find((f: any) => f.variable_name === 'userid' || f.variable_name === 'userId');
+         if (userField) userId = userField.value;
+      }
       
       if (!userId) {
         console.error('No userId found in Paystack metadata for email:', email);
-        return NextResponse.json({ error: 'Missing userId in metadata' }, { status: 400 });
+        console.log('Raw metadata:', JSON.stringify(event.data.metadata));
+        // Fallback: If metadata is totally missing, try finding the user by email via Auth Admin (Legacy Support)
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const user = users.find(u => u.email === email);
+        if (user) {
+           userId = user.id;
+        } else {
+           return NextResponse.json({ error: 'Missing userId in metadata and email not found' }, { status: 400 });
+        }
       }
 
-      // Upsert the user's profile: If they don't have a profile row yet, this creates it and sets them to active!
+      // Upsert the user's profile
       const { error } = await supabaseAdmin
         .from('profiles')
         .upsert({ 
