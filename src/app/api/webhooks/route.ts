@@ -23,14 +23,19 @@ export async function POST(req: Request) {
       const email = event.data.customer.email;
       const customerCode = event.data.customer.customer_code;
       
-      // Update the user's profile in Supabase to unlock the dashboard
+      // 1. Find user UUID from Auth
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+      const user = users.find(u => u.email === email);
+      if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+      // 2. Update profile by UUID
       const { error } = await supabaseAdmin
         .from('profiles')
         .update({ 
-          stripe_subscription_status: 'active', // Re-using this column name for simplicity
+          stripe_subscription_status: 'active',
           stripe_customer_id: customerCode
         })
-        .eq('email', email);
+        .eq('id', user.id);
         
       if (error) {
         console.error('Supabase update error:', error);
