@@ -19,7 +19,9 @@ import {
   TrendingUp,
   Sliders,
   Sparkles,
-  ArrowUpRight
+  ArrowUpRight,
+  Menu,
+  X
 } from "lucide-react";
 
 interface RequestItem {
@@ -32,6 +34,7 @@ interface RequestItem {
 }
 
 export default function Dashboard() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [googleLink, setGoogleLink] = useState("");
@@ -277,10 +280,20 @@ export default function Dashboard() {
 
   // --- NEW HIGH-FIDELITY MAIN APP DASHBOARD ---
   return (
-    <div className="min-h-screen bg-[#F4F6F9] font-sans text-slate-900 flex">
+    <div className="min-h-screen bg-[#F4F6F9] font-sans text-slate-900 flex relative overflow-hidden">
       
+      {/* Mobile Sidebar Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar (Inspired by AutomatedPro and Proijeck UI layouts) */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between flex-shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 md:static md:translate-x-0 ${
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
         <div className="p-6">
           {/* Logo & Workspace Selector */}
           <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl mb-8">
@@ -293,7 +306,12 @@ export default function Dashboard() {
                 <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest">Active Workspace</p>
               </div>
             </div>
-            <ChevronDown size={16} className="text-slate-400" />
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg md:hidden"
+            >
+              <X size={16} />
+            </button>
           </div>
 
           {/* Navigation Links */}
@@ -342,14 +360,20 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between flex-shrink-0">
-          <div>
+        <header className="h-16 bg-white border-b border-slate-200 px-6 md:px-8 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 md:hidden transition"
+            >
+              <Menu size={20} />
+            </button>
             <h1 className="text-base font-bold text-slate-950 flex items-center gap-2">
               <span>Overview</span>
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
             </h1>
           </div>
-          <div className="flex items-center gap-4 text-xs font-semibold text-slate-500">
+          <div className="hidden sm:flex items-center gap-4 text-xs font-semibold text-slate-500">
             <span>Server status: <span className="text-green-500 font-bold">Online</span></span>
             <div className="h-4 w-px bg-slate-200"></div>
             <span>Est. Response: <span className="text-slate-800 font-bold">&lt; 1s</span></span>
@@ -357,7 +381,7 @@ export default function Dashboard() {
         </header>
 
         {/* Inner Content Grid */}
-        <div className="p-8 space-y-8 flex-1">
+        <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 flex-1">
           
           {/* Greeting Box */}
           <div>
