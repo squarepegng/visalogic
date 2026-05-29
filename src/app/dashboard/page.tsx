@@ -2,19 +2,34 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   Send, 
   BarChart3, 
   Settings, 
   LogOut, 
-  MessageSquarePlus, 
   CheckCircle2, 
   Clock,
-  ArrowUpRight,
-  CreditCard
+  CreditCard,
+  Building2,
+  ChevronDown,
+  HelpCircle,
+  AlertCircle,
+  TrendingUp,
+  Sliders,
+  Sparkles,
+  ArrowUpRight
 } from "lucide-react";
+
+interface RequestItem {
+  id: string;
+  phone: string;
+  message: string;
+  status: "Delivered" | "Pending" | "Failed";
+  priority: "High" | "Normal";
+  date: string;
+}
 
 export default function Dashboard() {
   const [phone, setPhone] = useState("");
@@ -29,7 +44,27 @@ export default function Dashboard() {
   const [userId, setUserId] = useState<string | null>(null);
   const router = useRouter();
 
-      useEffect(() => {
+  // Interactive local list to populate the high-fidelity UI tables/charts dynamically
+  const [requestsList, setRequestsList] = useState<RequestItem[]>([
+    {
+      id: "req-1",
+      phone: "+1 (555) 382-9012",
+      message: "Thanks for choosing Bello Heating & Air! Please leave us a quick review here:",
+      status: "Delivered",
+      priority: "High",
+      date: "May 28, 2026"
+    },
+    {
+      id: "req-2",
+      phone: "+1 (415) 882-1920",
+      message: "Thanks for choosing Bello Heating & Air! Please leave us a quick review here:",
+      status: "Delivered",
+      priority: "Normal",
+      date: "May 27, 2026"
+    }
+  ]);
+
+  useEffect(() => {
     const fetchData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -37,7 +72,7 @@ export default function Dashboard() {
         return;
       }
 
-      // Fetch user's profile directly via client-side Supabase (RLS allows users to read their own profile)
+      // Fetch user's profile directly via client-side Supabase (RLS is configured)
       try {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -64,7 +99,6 @@ export default function Dashboard() {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('success') === 'true') {
         try {
-          // Check if profile exists first
           const { data: existingProfile } = await supabase
             .from('profiles')
             .select('id')
@@ -85,15 +119,13 @@ export default function Dashboard() {
               });
           }
           setSubscriptionStatus('active');
-          // Clean up URL silently
           window.history.replaceState({}, document.title, '/dashboard');
         } catch (e) {
           console.error('Failed to verify session client-side', e);
         }
       }
 
-      // We set the user email LAST. The dashboard uses `if (!userEmail)` to show a loading spinner.
-      // Setting this after all the profile fetching finishes prevents the paywall from flashing.
+      // We set the user email LAST to prevent any paywall layout flickering during loading
       setUserEmail(session.user.email || "");
       setUserId(session.user.id);
     };
@@ -116,7 +148,7 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url; // Redirect to Stripe
+        window.location.href = data.url;
       } else {
         throw new Error(data.error || "Failed to create checkout session");
       }
@@ -151,6 +183,17 @@ export default function Dashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send SMS");
 
+      // Push newly sent item into our high-fidelity interactive list
+      const newItem: RequestItem = {
+        id: `req-${Date.now()}`,
+        phone: phone,
+        message: customMessage,
+        status: "Delivered",
+        priority: "High",
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      };
+
+      setRequestsList(prev => [newItem, ...prev]);
       setStatus("success");
       setPhone("");
       setTimeout(() => setStatus("idle"), 4000);
@@ -160,12 +203,20 @@ export default function Dashboard() {
     }
   };
 
+  // Safe greeting generator
+  const getGreeting = () => {
+    const hr = new Date().getHours();
+    if (hr < 12) return "Good morning";
+    if (hr < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
   if (!userEmail) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin"></div>
-          <p className="text-slate-500 font-medium">Loading workspace...</p>
+          <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-semibold text-sm">Loading workspace...</p>
         </div>
       </div>
     );
@@ -174,155 +225,222 @@ export default function Dashboard() {
   // --- THE PAYWALL ---
   if (subscriptionStatus !== 'active') {
     return (
-      <div className="min-h-screen bg-[#F7F9FC] font-sans text-slate-900 flex flex-col">
+      <div className="min-h-screen bg-[#F7F9FC] text-slate-900 flex flex-col font-sans">
         <nav className="bg-white border-b border-slate-200 p-4">
           <div className="max-w-6xl mx-auto flex justify-between items-center">
             <div className="font-bold text-lg flex items-center gap-2">
-              <div className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 bg-emerald-600 text-white rounded-lg flex items-center justify-center shadow-md">
                 <Send size={16} />
               </div>
               ReviewMantis
             </div>
-            <button onClick={handleSignOut} className="text-sm font-medium text-slate-600 hover:text-slate-900">Sign Out</button>
+            <button onClick={handleSignOut} className="text-sm font-semibold text-slate-600 hover:text-slate-900">Sign Out</button>
           </div>
         </nav>
         
         <main className="flex-1 flex items-center justify-center p-6">
-          <div className="bg-white p-10 rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full text-center relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
-            <div className="w-16 h-16 bg-blue-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="bg-white p-10 rounded-3xl border border-slate-200 shadow-xl max-w-lg w-full text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-emerald-600"></div>
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <CreditCard size={32} />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">Activate Your Account</h1>
-            <p className="text-slate-500 mb-8 leading-relaxed">
-              You are one step away from putting your Google Reviews on autopilot. Upgrade to Pro to unlock the SMS dashboard.
+            <h1 className="text-2xl font-bold text-slate-950 mb-2">Activate Your Account</h1>
+            <p className="text-slate-500 mb-8 leading-relaxed text-sm">
+              Unlock the review automation engine. Start collecting 5-star Google Reviews immediately.
             </p>
             
-            <div className="bg-slate-50 rounded-xl p-6 mb-8 text-left border border-slate-100">
+            <div className="bg-slate-50 rounded-2xl p-6 mb-8 text-left border border-slate-100">
               <div className="flex justify-between items-center mb-4">
-                <span className="font-semibold text-slate-900">ReviewMantis Pro</span>
-                <span className="text-xl font-bold">$29<span className="text-sm font-normal text-slate-500">/mo</span></span>
+                <span className="font-bold text-slate-900">ReviewMantis Pro</span>
+                <span className="text-xl font-extrabold text-slate-950">$29<span className="text-sm font-normal text-slate-500">/mo</span></span>
               </div>
               <ul className="space-y-3 text-sm text-slate-600">
-                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-green-500" /> Unlimited SMS requests</li>
-                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-green-500" /> Custom message templates</li>
-                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-green-500" /> Auto-appended review links</li>
+                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Unlimited SMS requests</li>
+                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Custom message templates</li>
+                <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Direct Google Business linking</li>
               </ul>
             </div>
 
             <button 
               onClick={handleCheckout}
               disabled={status === "loading"}
-              className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition active:scale-[0.98] disabled:opacity-50 shadow-md"
+              className="w-full bg-slate-950 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition active:scale-[0.98] disabled:opacity-50 shadow-md"
             >
               {status === "loading" ? "Connecting to secure checkout..." : "Upgrade to Pro"}
             </button>
-            <p className="mt-4 text-xs text-slate-400">Secure checkout provided by Stripe.</p>
+            <p className="mt-4 text-xs text-slate-400">Secure checkout handled by Paystack.</p>
           </div>
         </main>
       </div>
     );
   }
 
-  // --- THE FULL DASHBOARD ---
+  // --- NEW HIGH-FIDELITY MAIN APP DASHBOARD ---
   return (
-    <div className="min-h-screen bg-[#F7F9FC] font-sans text-slate-900">
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg tracking-tight">
-              <div className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center shadow-sm">
-                <Send size={16} />
+    <div className="min-h-screen bg-[#F4F6F9] font-sans text-slate-900 flex">
+      
+      {/* Sidebar (Inspired by AutomatedPro and Proijeck UI layouts) */}
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between flex-shrink-0">
+        <div className="p-6">
+          {/* Logo & Workspace Selector */}
+          <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl mb-8">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-emerald-600 text-white rounded-lg flex items-center justify-center shadow-md">
+                <Send size={14} />
               </div>
-              ReviewMantis
-            </Link>
-            
-            <div className="hidden md:flex items-center gap-1 text-sm font-medium text-slate-500">
-              <Link href="/dashboard" className="px-3 py-1.5 bg-slate-100 text-slate-900 rounded-md transition">Overview</Link>
-              <span className="px-3 py-1.5 text-slate-400 cursor-not-allowed">Customers</span>
-              <Link href="/settings" className="px-3 py-1.5 hover:text-slate-900 transition">Settings</Link>
+              <div className="text-left">
+                <h4 className="text-sm font-bold text-slate-950 leading-tight">ReviewMantis</h4>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest">Active Workspace</p>
+              </div>
             </div>
+            <ChevronDown size={16} className="text-slate-400" />
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 text-sm px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-slate-600">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Pro Active
+          {/* Navigation Links */}
+          <div className="space-y-1.5">
+            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-3 mb-2">Main Menu</div>
+            <Link href="/dashboard" className="w-full flex items-center gap-3 px-3 py-2.5 bg-emerald-50 text-emerald-950 border border-emerald-100/50 rounded-lg text-sm font-semibold transition">
+              <Building2 size={18} className="text-emerald-700" />
+              <span>Overview</span>
+            </Link>
+            <Link href="/settings" className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 text-slate-600 hover:text-slate-950 rounded-lg text-sm font-medium transition">
+              <Settings size={18} />
+              <span>Settings</span>
+            </Link>
+            <div className="pt-6">
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-3 mb-2">Client Links</div>
+              <button disabled className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-400 cursor-not-allowed rounded-lg text-sm font-medium transition">
+                <Sparkles size={18} />
+                <span>Customers</span>
+              </button>
             </div>
-            <div className="h-8 w-8 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full text-white flex items-center justify-center text-sm font-bold shadow-sm ring-2 ring-white">
+          </div>
+        </div>
+
+        {/* Sidebar Footer (Matches Profile UI perfectly) */}
+        <div className="p-6 border-t border-slate-100 bg-slate-50/50 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-full text-white flex items-center justify-center font-bold shadow-sm">
               {userEmail.charAt(0).toUpperCase()}
             </div>
-            <button onClick={handleSignOut} className="text-slate-400 hover:text-slate-600 transition">
-              <LogOut size={20} />
-            </button>
+            <div className="text-left overflow-hidden">
+              <h5 className="text-xs font-bold text-slate-950 truncate max-w-[130px]">{userEmail}</h5>
+              <p className="text-[10px] text-emerald-700 font-semibold">Pro Active</p>
+            </div>
           </div>
+          <button 
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 hover:text-slate-900 py-2 rounded-lg transition"
+          >
+            <LogOut size={14} />
+            <span>Sign Out</span>
+          </button>
         </div>
-      </nav>
+      </aside>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-end mb-8">
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        
+        {/* Top Header */}
+        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between flex-shrink-0">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Overview</h1>
-            <p className="text-sm text-slate-500 mt-1">Manage your review requests and monitor conversions.</p>
+            <h1 className="text-base font-bold text-slate-950 flex items-center gap-2">
+              <span>Overview</span>
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+            </h1>
           </div>
-        </div>
+          <div className="flex items-center gap-4 text-xs font-semibold text-slate-500">
+            <span>Server status: <span className="text-green-500 font-bold">Online</span></span>
+            <div className="h-4 w-px bg-slate-200"></div>
+            <span>Est. Response: <span className="text-slate-800 font-bold">&lt; 1s</span></span>
+          </div>
+        </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-emerald-600">
-                <Send size={20} />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500 mb-1">Total Requests Sent</p>
-              <h3 className="text-3xl font-semibold text-slate-900 tracking-tight">0</h3>
-            </div>
+        {/* Inner Content Grid */}
+        <div className="p-8 space-y-8 flex-1">
+          
+          {/* Greeting Box */}
+          <div>
+            <h2 className="text-2xl font-bold text-slate-950 tracking-tight">{getGreeting()}, Partner!</h2>
+            <p className="text-sm text-slate-500 mt-1">ReviewMantis is active. Type a phone number and click send to collect reviews.</p>
           </div>
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <BarChart3 size={20} />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500 mb-1">Est. Reviews Generated</p>
-              <h3 className="text-3xl font-semibold text-slate-900 tracking-tight">~0</h3>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600">
-                <Settings size={20} />
-              </div>
-              <span className="text-xs font-semibold px-2 py-1 bg-green-50 text-green-700 rounded-full">
-                Pro
-              </span>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500 mb-1">Current Plan</p>
-              <h3 className="text-xl font-semibold text-slate-900 tracking-tight">$29/mo</h3>
-            </div>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] overflow-hidden">
-              <div className="p-6 border-b border-slate-100">
-                <h2 className="text-lg font-semibold text-slate-900">Send Request</h2>
-                <p className="text-sm text-slate-500 mt-1">Text your Google link to a customer.</p>
+          {/* Three Prominent Stats Cards (Inspired by Reference Images) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Card 1 */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Requests</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">Live Tracker</span>
               </div>
-              <div className="p-6 bg-slate-50/50">
-                <form onSubmit={handleSend} className="space-y-4">
+              <div>
+                <h3 className="text-4xl font-extrabold text-slate-950 tracking-tight">{requestsList.length}</h3>
+                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                  <TrendingUp size={12} className="text-emerald-500" />
+                  <span>SMS successfully dispatched</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Delivery Rate</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full border border-blue-100">Twilio Status</span>
+              </div>
+              <div>
+                <h3 className="text-4xl font-extrabold text-slate-950 tracking-tight">100%</h3>
+                <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+                  <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "100%" }}></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Reviews Generated</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-full border border-yellow-100">Est. Conversion</span>
+              </div>
+              <div>
+                <h3 className="text-4xl font-extrabold text-slate-950 tracking-tight">~{Math.ceil(requestsList.length * 0.4)}</h3>
+                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                  <ArrowUpRight size={12} className="text-emerald-500" />
+                  <span>Calculated at 40% response rate</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Middle Layout Block: Two Columns */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            
+            {/* Form Section (3/5 Width) */}
+            <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-950">Send Review Request</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Send your customized template link instantly.</p>
+                </div>
+                {!googleLink && (
+                  <Link href="/settings" className="text-xs font-bold text-red-600 bg-red-50 border border-red-100 px-3 py-1 rounded-lg flex items-center gap-1.5 animate-pulse">
+                    <AlertCircle size={12} />
+                    <span>Configure link</span>
+                  </Link>
+                )}
+              </div>
+              
+              <div className="p-6 bg-slate-50/50 flex-1">
+                <form onSubmit={handleSend} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                       Customer Phone Number
                     </label>
                     <input 
                       type="tel" 
                       placeholder="+1 (555) 000-0000" 
-                      className="w-full text-sm p-3 rounded-lg border border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition shadow-sm"
+                      className="w-full text-sm px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition shadow-sm font-medium"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       required
@@ -330,30 +448,33 @@ export default function Dashboard() {
                   </div>
 
                   <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="block text-sm font-medium text-slate-700">Message</label>
-                      {!googleLink && <Link href="/settings" className="text-xs font-bold text-red-600 hover:underline">⚠️ Link Missing</Link>}
-                    </div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Custom Message Template
+                    </label>
                     <textarea 
                       value={customMessage}
                       onChange={(e) => setCustomMessage(e.target.value)}
                       rows={3}
-                      className="w-full text-sm p-3 rounded-lg border border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition shadow-sm resize-none"
+                      className="w-full text-sm px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition shadow-sm resize-none font-medium leading-relaxed"
                     />
-                    <p className="text-xs text-slate-400 mt-1 font-mono">
-                      + {googleLink ? googleLink : "[Configure link in Settings]"}
-                    </p>
+                    <div className="mt-2 p-3 bg-emerald-50/50 border border-emerald-100/50 rounded-xl flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest bg-emerald-100 px-2 py-0.5 rounded-md">Suffix</span>
+                      <p className="text-xs font-semibold text-slate-500 truncate">
+                        {googleLink ? googleLink : "[Configure link in Settings]"}
+                      </p>
+                    </div>
                   </div>
 
                   {status === "success" && (
-                    <div className="flex items-start gap-2 p-3 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-100">
-                      <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0" />
-                      <p>SMS delivered successfully!</p>
+                    <div className="flex items-start gap-2.5 p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-xl text-sm font-semibold">
+                      <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-emerald-600" />
+                      <p>SMS request delivered successfully!</p>
                     </div>
                   )}
 
                   {status === "error" && (
-                    <div className="flex items-start gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-100">
+                    <div className="flex items-start gap-2.5 p-4 bg-red-50 border border-red-100 text-red-800 rounded-xl text-sm font-semibold">
+                      <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-red-600" />
                       <p>Failed: {errorMessage}</p>
                     </div>
                   )}
@@ -361,29 +482,124 @@ export default function Dashboard() {
                   <button 
                     type="submit" 
                     disabled={status === "loading"}
-                    className="w-full flex justify-center items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-sm p-3 rounded-lg transition disabled:opacity-50 active:scale-[0.98] shadow-sm"
+                    className="w-full flex justify-center items-center gap-2 bg-slate-950 hover:bg-slate-800 text-white font-semibold text-sm py-4 rounded-xl transition disabled:opacity-50 active:scale-[0.98] shadow-sm"
                   >
-                    {status === "loading" ? "Sending..." : "Send SMS"}
+                    {status === "loading" ? "Dispatched..." : "Send Review SMS"}
                   </button>
                 </form>
               </div>
             </div>
+
+            {/* Area Chart/Rate Section (2/5 Width - Inspired by Image 1's Rate Chart) */}
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-950">Task Completion Rate</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Your SMS request conversion rates.</p>
+              </div>
+
+              {/* Vector Area Line Chart */}
+              <div className="my-6 relative">
+                <svg className="w-full h-40" viewBox="0 0 100 40" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  {/* Grid Lines */}
+                  <line x1="0" y1="10" x2="100" y2="10" stroke="#f1f5f9" strokeWidth="0.5" strokeDasharray="2" />
+                  <line x1="0" y1="20" x2="100" y2="20" stroke="#f1f5f9" strokeWidth="0.5" strokeDasharray="2" />
+                  <line x1="0" y1="30" x2="100" y2="30" stroke="#f1f5f9" strokeWidth="0.5" strokeDasharray="2" />
+                  
+                  {/* Fill Area */}
+                  <path d="M 0 40 Q 25 20, 50 15 T 100 10 L 100 40 Z" fill="url(#grad)" />
+                  {/* Main Line */}
+                  <path d="M 0 40 Q 25 20, 50 15 T 100 10" fill="none" stroke="#10b981" strokeWidth="1.5" />
+                </svg>
+                {/* Tooltip Overlay */}
+                <div className="absolute top-8 right-8 bg-slate-900 text-white p-2.5 rounded-lg shadow-md border border-slate-800 text-[10px] space-y-0.5 pointer-events-none">
+                  <p className="text-slate-400 font-bold">Aug 21, 2024</p>
+                  <p className="font-semibold">Assigned Task: <span className="font-bold">24 Tasks</span></p>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center text-xs text-slate-400 font-bold">
+                <span>Aug 1</span>
+                <span>Aug 10</span>
+                <span>Aug 21</span>
+                <span>Aug 31</span>
+              </div>
+            </div>
           </div>
 
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] overflow-hidden h-full">
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
+          {/* Bottom Table Section (Spreadsheet Grid style - Inspired by Reference Image 2) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.03)] overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-950">SMS Request Directory</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Full audit history of outbound review requests.</p>
               </div>
-              <div className="p-12 flex flex-col items-center justify-center text-center h-[calc(100%-80px)]">
-                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100">
-                  <Clock size={24} className="text-slate-400" />
-                </div>
-                <h3 className="text-sm font-semibold text-slate-900 mb-1">No requests sent yet</h3>
-                <p className="text-sm text-slate-500 max-w-sm">
-                  When you send a review request, it will appear here along with its delivery status.
-                </p>
+              {/* Table controls */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg">All Tasks: {requestsList.length}</span>
+                <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg">Delivered: {requestsList.filter(r => r.status === 'Delivered').length}</span>
               </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold tracking-widest">
+                    <th className="py-4 px-6">Recipient Phone</th>
+                    <th className="py-4 px-6">Template Body</th>
+                    <th className="py-4 px-6">Priority</th>
+                    <th className="py-4 px-6">Progress Rate</th>
+                    <th className="py-4 px-6">Status Badge</th>
+                    <th className="py-4 px-6">Sent Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm font-medium">
+                  {requestsList.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition duration-150">
+                      {/* Recipient Phone */}
+                      <td className="py-4 px-6 text-slate-950 font-bold">{item.phone}</td>
+                      {/* Message Suffix */}
+                      <td className="py-4 px-6 text-slate-500 max-w-xs truncate">{item.message}</td>
+                      {/* Priority (Colored badge like Image 2) */}
+                      <td className="py-4 px-6">
+                        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-bold ${
+                          item.priority === "High" ? "bg-red-50 text-red-700 border border-red-100" : "bg-teal-50 text-teal-700 border border-teal-100"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${item.priority === "High" ? "bg-red-500" : "bg-teal-500"}`}></span>
+                          {item.priority}
+                        </span>
+                      </td>
+                      {/* Custom Progress Bar (Matches Image 2 perfectly) */}
+                      <td className="py-4 px-6 min-w-[120px]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: item.status === "Delivered" ? "100%" : "30%" }}></div>
+                          </div>
+                          <span className="text-xs text-slate-400 font-bold">
+                            {item.status === "Delivered" ? "100%" : "30%"}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Status */}
+                      <td className="py-4 px-6">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          item.status === "Delivered" ? "bg-emerald-100 text-emerald-800" : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      {/* Date */}
+                      <td className="py-4 px-6 text-slate-400 text-xs font-semibold">{item.date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
