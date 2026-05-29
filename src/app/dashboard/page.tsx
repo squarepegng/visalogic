@@ -97,11 +97,11 @@ export default function Dashboard() {
       } catch (err) {
         console.error("Failed to fetch profile", err);
       }
-
       // BULLETPROOF UNLOCK: If returning from Paystack checkout, force unlock immediately on the client side.
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('success') === 'true') {
         try {
+          // Check if profile exists first
           const { data: existingProfile } = await supabase
             .from('profiles')
             .select('id')
@@ -126,6 +126,33 @@ export default function Dashboard() {
         } catch (e) {
           console.error('Failed to verify session client-side', e);
         }
+      }
+
+      // Fetch outbound SMS logs from Supabase
+      try {
+        const { data: logs, error: logsError } = await supabase
+          .from('sms_logs')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (logsError) {
+          // If the table doesn't exist yet (42P01), ignore silently and rely on dummy fallback
+          if (logsError.code !== '42P01') {
+            console.error("Failed to fetch SMS logs from Supabase", logsError);
+          }
+        } else if (logs && logs.length > 0) {
+          const formattedLogs: RequestItem[] = logs.map((log: any) => ({
+            id: log.id,
+            phone: log.recipient_phone,
+            message: log.message,
+            status: log.status,
+            priority: log.priority,
+            date: new Date(log.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          }));
+          setRequestsList(formattedLogs);
+        }
+      } catch (err) {
+        console.error("Failed to fetch SMS logs", err);
       }
 
       // We set the user email LAST to prevent any paywall layout flickering during loading
@@ -185,6 +212,19 @@ export default function Dashboard() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send SMS");
+
+      // Try to write to Supabase table (protected by RLS)
+      try {
+        await supabase.from('sms_logs').insert({
+          user_id: userId,
+          recipient_phone: phone,
+          message: customMessage,
+          status: "Delivered",
+          priority: "High"
+        });
+      } catch (dbErr) {
+        console.error("Failed to persist SMS log to database, using local fallback.", dbErr);
+      }
 
       // Push newly sent item into our high-fidelity interactive list
       const newItem: RequestItem = {
