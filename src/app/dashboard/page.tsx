@@ -29,15 +29,13 @@ export default function Dashboard() {
   const [userId, setUserId] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
+      useEffect(() => {
     const fetchData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push("/login");
         return;
       }
-      setUserEmail(session.user.email || "");
-      setUserId(session.user.id);
 
       // Fetch user's profile and sub status
       const { data: profile } = await supabase
@@ -70,6 +68,11 @@ export default function Dashboard() {
           console.error('Failed to verify session', e);
         }
       }
+
+      // We set the user email LAST. The dashboard uses `if (!userEmail)` to show a loading spinner.
+      // Setting this after all the profile fetching finishes prevents the paywall from flashing.
+      setUserEmail(session.user.email || "");
+      setUserId(session.user.id);
     };
 
     fetchData();
