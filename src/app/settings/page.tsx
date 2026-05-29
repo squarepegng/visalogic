@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Send, LogOut } from "lucide-react";
+import { Send, LogOut, Building2 } from "lucide-react";
 
 export default function Settings() {
+  const [businessName, setBusinessName] = useState("");
   const [googleLink, setGoogleLink] = useState("");
   const [defaultMessage, setDefaultMessage] = useState("Thanks for choosing us! We'd love if you could leave a quick 5-star review here:");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export default function Settings() {
         .single();
 
       if (data) {
+        if (data.business_name) setBusinessName(data.business_name);
         if (data.google_review_link) setGoogleLink(data.google_review_link);
         if (data.default_message) setDefaultMessage(data.default_message);
       } else if (error && error.code === 'PGRST116') {
@@ -55,6 +57,7 @@ export default function Settings() {
         .from('profiles')
         .upsert({ 
           id: userId, 
+          business_name: businessName,
           google_review_link: googleLink,
           default_message: defaultMessage,
           updated_at: new Date().toISOString()
@@ -122,6 +125,25 @@ export default function Settings() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] overflow-hidden">
           <form onSubmit={handleSave}>
             <div className="p-8 space-y-8">
+              
+              {/* Business Name Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1">Business Name</h3>
+                <p className="text-sm text-slate-500 mb-3">This brands your review request messages and interactive interface.</p>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="text" 
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="e.g., Bello Heating & Air"
+                    className="w-full text-sm pl-11 pr-4 py-3 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition shadow-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <hr className="border-slate-100" />
               
               {/* Google Link Section */}
               <div>

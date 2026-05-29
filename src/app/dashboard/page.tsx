@@ -21,7 +21,11 @@ import {
   Sparkles,
   ArrowUpRight,
   Menu,
-  X
+  X,
+  Smartphone,
+  ArrowRight,
+  ArrowLeft,
+  Check
 } from "lucide-react";
 
 interface RequestItem {
@@ -45,6 +49,12 @@ export default function Dashboard() {
   
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // Onboarding Wizard states
+  const [businessName, setBusinessName] = useState("");
+  const [isOnboarded, setIsOnboarded] = useState<boolean | null>(null);
+  const [onboardingStep, setOnboardingStep] = useState(1);
+
   const router = useRouter();
 
   // Interactive local list to populate the high-fidelity UI tables/charts dynamically
@@ -79,7 +89,7 @@ export default function Dashboard() {
       try {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('default_message, google_review_link, stripe_subscription_status')
+          .select('business_name, default_message, google_review_link, stripe_subscription_status')
           .eq('id', session.user.id)
           .single();
         
@@ -88,14 +98,26 @@ export default function Dashboard() {
         }
 
         if (profile) {
-          if (profile.default_message) setCustomMessage(profile.default_message);
-          if (profile.google_review_link) setGoogleLink(profile.google_review_link);
+          if (profile.business_name) setBusinessName(profile.business_name);
+          if (profile.default_message) {
+            setCustomMessage(profile.default_message);
+          } else {
+            setCustomMessage("Thanks for choosing us! We'd love if you could leave a quick 5-star review here:");
+          }
+          if (profile.google_review_link) {
+            setGoogleLink(profile.google_review_link);
+            setIsOnboarded(true);
+          } else {
+            setIsOnboarded(false);
+          }
           if (profile.stripe_subscription_status) setSubscriptionStatus(profile.stripe_subscription_status);
         } else {
           setCustomMessage("Thanks for choosing us! We'd love if you could leave a quick 5-star review here:");
+          setIsOnboarded(false);
         }
       } catch (err) {
         console.error("Failed to fetch profile", err);
+        setIsOnboarded(false);
       }
       // BULLETPROOF UNLOCK: If returning from Paystack checkout, force unlock immediately on the client side.
       const urlParams = new URLSearchParams(window.location.search);
@@ -166,6 +188,38 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push("/login");
+  };
+
+  const handleCompleteOnboarding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) return;
+    setStatus("loading");
+    setErrorMessage("");
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          business_name: businessName,
+          google_review_link: googleLink,
+          default_message: customMessage || "Thanks for choosing us! We'd love if you could leave a quick 5-star review here:",
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        if (error.code === '42P01') {
+          throw new Error("Database tables are not set up yet. (Need to run SQL in Supabase dashboard)");
+        }
+        throw error;
+      }
+      
+      setIsOnboarded(true);
+      setStatus("idle");
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMessage(err.message);
+    }
   };
 
   const handleCheckout = async () => {
@@ -254,13 +308,250 @@ export default function Dashboard() {
     return "Good evening";
   };
 
-  if (!userEmail) {
+  if (!userEmail || isOnboarded === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
           <p className="text-slate-500 font-semibold text-sm">Loading workspace...</p>
         </div>
+      </div>
+    );
+  }
+
+  // --- ONBOARDING WIZARD ---
+  if (!isOnboarded) {
+    return (
+      <div className="min-h-screen bg-[#F4F6F9] text-slate-900 flex flex-col font-sans">
+        <nav className="bg-white border-b border-slate-200 p-4 sticky top-0 z-10">
+          <div className="max-w-6xl mx-auto flex justify-between items-center">
+            <div className="font-bold text-lg flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-600 text-white rounded-lg flex items-center justify-center shadow-md">
+                <Send size={16} />
+              </div>
+              ReviewMantis
+            </div>
+            <button onClick={handleSignOut} className="text-sm font-semibold text-slate-600 hover:text-slate-900">Sign Out</button>
+          </div>
+        </nav>
+
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 md:py-12">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl max-w-4xl w-full flex flex-col md:flex-row overflow-hidden min-h-[500px]">
+            
+            {/* Left Column: Form & Steps */}
+            <div className="w-full md:w-3/5 p-8 sm:p-10 flex flex-col justify-between">
+              <div>
+                {/* Step Indicators */}
+                <div className="flex items-center gap-2 mb-8">
+                  {[1, 2, 3].map((step) => (
+                    <div key={step} className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                        onboardingStep === step 
+                          ? "bg-emerald-600 text-white shadow-md ring-4 ring-emerald-600/10" 
+                          : onboardingStep > step 
+                          ? "bg-emerald-100 text-emerald-700" 
+                          : "bg-slate-100 text-slate-400"
+                      }`}>
+                        {onboardingStep > step ? <Check size={14} /> : step}
+                      </div>
+                      {step < 3 && <div className={`w-8 h-0.5 rounded ${onboardingStep > step ? "bg-emerald-500" : "bg-slate-200"}`}></div>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Step 1: Business Details */}
+                {onboardingStep === 1 && (
+                  <div className="space-y-5 animate-fadeIn">
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Step 1 of 3</span>
+                      <h2 className="text-2xl font-bold text-slate-950 mt-1 mb-2">Tell us about your business</h2>
+                      <p className="text-sm text-slate-500">We will use this to brand your automated reviews and text messages.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Business Name</label>
+                        <div className="relative">
+                          <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                          <input 
+                            type="text"
+                            value={businessName}
+                            onChange={(e) => {
+                              const name = e.target.value;
+                              setBusinessName(name);
+                              // Auto-generate standard message with their business name
+                              setCustomMessage(`Thanks for choosing ${name}! Please leave us a quick review here:`);
+                            }}
+                            placeholder="e.g., Bello Heating & Air"
+                            className="w-full pl-11 pr-4 py-3 text-sm rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition shadow-sm"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Google Review Link */}
+                {onboardingStep === 2 && (
+                  <div className="space-y-5 animate-fadeIn">
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Step 2 of 3</span>
+                      <h2 className="text-2xl font-bold text-slate-950 mt-1 mb-2">Connect Google Reviews</h2>
+                      <p className="text-sm text-slate-500">This is where your clients will be redirected to leave their 5-star reviews.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Google Review Link</label>
+                        <input 
+                          type="url"
+                          value={googleLink}
+                          onChange={(e) => setGoogleLink(e.target.value)}
+                          placeholder="https://g.page/r/example/review"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition shadow-sm"
+                          required
+                        />
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs text-slate-500 space-y-2">
+                        <p className="font-semibold text-slate-700">How to find your Google review link:</p>
+                        <ol className="list-decimal pl-4 space-y-1">
+                          <li>Go to your Google Business Profile manager.</li>
+                          <li>Click on the <span className="font-semibold text-slate-700">"Get more reviews"</span> button on your dashboard.</li>
+                          <li>Copy the short link starting with <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">g.page/r/...</code> or <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">search.google.com/...</code> and paste it here.</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: SMS Invite Customization */}
+                {onboardingStep === 3 && (
+                  <div className="space-y-5 animate-fadeIn">
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Step 3 of 3</span>
+                      <h2 className="text-2xl font-bold text-slate-950 mt-1 mb-2">Customize your SMS Invite</h2>
+                      <p className="text-sm text-slate-500">Write the message that customers will receive. Keep it short, warm, and clear.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-sm font-semibold text-slate-700">Invite Message</label>
+                          <span className="text-xs text-slate-400 font-mono">{(customMessage || "").length}/120 chars</span>
+                        </div>
+                        <textarea 
+                          value={customMessage}
+                          onChange={(e) => setCustomMessage(e.target.value.slice(0, 120))}
+                          placeholder="Thanks for choosing us! We'd love if you could leave a quick 5-star review here:"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition shadow-sm h-28 resize-none"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex items-center justify-between gap-4 mt-8 pt-6 border-t border-slate-100">
+                {onboardingStep > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setOnboardingStep((s) => s - 1)}
+                    className="flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-semibold px-4 py-2 rounded-xl transition"
+                  >
+                    <ArrowLeft size={16} /> Back
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+
+                {onboardingStep < 3 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onboardingStep === 1 && !businessName.trim()) {
+                        setErrorMessage("Please enter your business name.");
+                        setStatus("error");
+                        setTimeout(() => setStatus("idle"), 3000);
+                        return;
+                      }
+                      if (onboardingStep === 2 && !googleLink.trim()) {
+                        setErrorMessage("Please enter your Google Review Link.");
+                        setStatus("error");
+                        setTimeout(() => setStatus("idle"), 3000);
+                        return;
+                      }
+                      setErrorMessage("");
+                      setOnboardingStep((s) => s + 1);
+                    }}
+                    className="flex items-center gap-2 bg-slate-950 hover:bg-slate-800 text-white text-sm font-bold px-6 py-3 rounded-xl transition shadow-md active:scale-[0.98]"
+                  >
+                    Continue <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCompleteOnboarding}
+                    disabled={status === "loading"}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-6 py-3 rounded-xl transition shadow-md active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {status === "loading" ? "Saving workspace..." : "Finish & Launch Dashboard 🦗"}
+                  </button>
+                )}
+              </div>
+
+              {errorMessage && status === "error" && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-100 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Visual Side-by-Side (Branding & Live SMS Preview) */}
+            <div className="w-full md:w-2/5 bg-slate-900 p-8 sm:p-10 flex flex-col justify-center items-center relative overflow-hidden text-white border-t md:border-t-0 md:border-l border-slate-800">
+              {/* Decorative Glow */}
+              <div className="absolute top-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full bg-emerald-600/10 blur-[100px] pointer-events-none"></div>
+              
+              <div className="relative z-10 w-full max-w-[280px]">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-6">Live Customer Preview</h4>
+                
+                {/* Smartphone Wrapper */}
+                <div className="bg-slate-950 border-[6px] border-slate-800 rounded-[36px] p-4 shadow-2xl relative">
+                  <div className="w-16 h-4 bg-slate-800 rounded-full mx-auto mb-4 relative top-0 flex items-center justify-center">
+                    <div className="w-2 h-2 bg-slate-900 rounded-full"></div>
+                  </div>
+                  
+                  {/* SMS Message Bubble */}
+                  <div className="space-y-4 min-h-[220px] flex flex-col justify-end">
+                    <div className="text-[10px] text-slate-500 text-center font-semibold uppercase tracking-wider mb-2">Today • iMessage</div>
+                    
+                    <div className="bg-emerald-600 text-white text-xs p-3 rounded-2xl rounded-br-none shadow-md max-w-[90%] ml-auto leading-relaxed relative">
+                      <p className="font-semibold mb-1 text-[10px] text-emerald-100">
+                        {businessName || "Your Business"}
+                      </p>
+                      <p className="text-[11px]">
+                        {customMessage || "Thanks for choosing us! We'd love if you could leave a quick 5-star review here:"}
+                      </p>
+                      <p className="text-[10px] underline text-emerald-200 break-all font-mono mt-2">
+                        {googleLink || "https://g.page/r/..."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-20 h-1 bg-slate-800 rounded-full mx-auto mt-6"></div>
+                </div>
+
+                <p className="text-[11px] text-slate-400 text-center mt-6 leading-relaxed">
+                  This is exactly how the SMS invite will appear on your customers' mobile phones.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </main>
       </div>
     );
   }
