@@ -53,6 +53,23 @@ export default function Dashboard() {
       } else {
         setCustomMessage("Thanks for choosing us! We'd love if you could leave a quick 5-star review here:");
       }
+
+      // BULLETPROOF UNLOCK: If returning from Paystack checkout, force unlock immediately.
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success') === 'true') {
+        try {
+          await fetch('/api/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: session.user.id })
+          });
+          setSubscriptionStatus('active');
+          // Clean up URL silently
+          window.history.replaceState({}, document.title, '/dashboard');
+        } catch (e) {
+          console.error('Failed to verify session', e);
+        }
+      }
     };
 
     fetchData();
