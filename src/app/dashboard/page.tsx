@@ -37,15 +37,18 @@ export default function Dashboard() {
         return;
       }
 
-      // Fetch user's profile and sub status securely via backend to bypass RLS restrictions
+      // Fetch user's profile directly via client-side Supabase (RLS allows users to read their own profile)
       try {
-        const res = await fetch('/api/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: session.user.id })
-        });
-        const { profile } = await res.json();
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('default_message, google_review_link, stripe_subscription_status')
+          .eq('id', session.user.id)
+          .single();
         
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Failed to fetch profile", profileError);
+        }
+
         if (profile) {
           if (profile.default_message) setCustomMessage(profile.default_message);
           if (profile.google_review_link) setGoogleLink(profile.google_review_link);
@@ -57,20 +60,35 @@ export default function Dashboard() {
         console.error("Failed to fetch profile", err);
       }
 
-      // BULLETPROOF UNLOCK: If returning from Paystack checkout, force unlock immediately.
+      // BULLETPROOF UNLOCK: If returning from Paystack checkout, force unlock immediately on the client side.
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('success') === 'true') {
         try {
-          await fetch('/api/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: session.user.id })
-          });
+          // Check if profile exists first
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', session.user.id)
+            .single();
+
+          if (existingProfile) {
+            await supabase
+              .from('profiles')
+              .update({ stripe_subscription_status: 'active' })
+              .eq('id', session.user.id);
+          } else {
+            await supabase
+              .from('profiles')
+              .insert({ 
+                id: session.user.id,
+                stripe_subscription_status: 'active'
+              });
+          }
           setSubscriptionStatus('active');
           // Clean up URL silently
           window.history.replaceState({}, document.title, '/dashboard');
         } catch (e) {
-          console.error('Failed to verify session', e);
+          console.error('Failed to verify session client-side', e);
         }
       }
 
