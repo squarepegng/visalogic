@@ -17,7 +17,8 @@ export async function POST(req: Request) {
         plan: "PLN_gacsnk3x4ak6mzr", // Auto-generated Paystack Plan (ReviewMantis Pro)
         callback_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://visalogic-flax.vercel.app'}/dashboard?success=true`,
         metadata: {
-          userId: userId, // Pass the exact database ID to Paystack so it hands it back to our Webhook
+          supabase_user_id: userId, // CRITICAL: Links payment to Supabase Auth user (per Google AI Studio)
+          userId: userId, // Keeping legacy key just in case
           custom_fields: [
             {
               display_name: "Action",

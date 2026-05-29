@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       
       // Paystack stores our passed metadata inside custom_fields or directly on metadata depending on initialization structure.
       // We check both places to safely extract the userId.
-      let userId = event.data.metadata?.userId;
+      let userId = event.data.metadata?.supabase_user_id || event.data.metadata?.userId;
       if (!userId && event.data.metadata?.custom_fields) {
          const userField = event.data.metadata.custom_fields.find((f: any) => f.variable_name === 'userid' || f.variable_name === 'userId');
          if (userField) userId = userField.value;
