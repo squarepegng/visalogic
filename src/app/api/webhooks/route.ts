@@ -44,19 +44,24 @@ export async function POST(req: Request) {
         }
       }
 
-      // Upsert the user's profile
-      const { error } = await supabaseAdmin
+      // Check if profile exists
+      const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
-        .update({ 
-          stripe_subscription_status: 'active',
-          stripe_customer_id: customerCode
-        })
-        .eq('id', userId);
-        
-      if (error) {
-        console.error('Supabase update error:', error);
-        
-        // If update fails because row doesn't exist, insert it
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (existingProfile) {
+        const { error: updateError } = await supabaseAdmin
+          .from('profiles')
+          .update({ 
+            stripe_subscription_status: 'active',
+            stripe_customer_id: customerCode
+          })
+          .eq('id', userId);
+          
+        if (updateError) console.error('Supabase update error:', updateError);
+      } else {
         const { error: insertError } = await supabaseAdmin
           .from('profiles')
           .insert({ 
@@ -65,10 +70,7 @@ export async function POST(req: Request) {
             stripe_customer_id: customerCode
           });
           
-        if (insertError) {
-           console.error('Supabase insert fallback error:', insertError);
-           return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
-        }
+        if (insertError) console.error('Supabase insert error:', insertError);
       }
       
       console.log(`Successfully unlocked dashboard for: ${email} (ID: ${userId})`);
