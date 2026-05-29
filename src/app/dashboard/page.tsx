@@ -37,19 +37,24 @@ export default function Dashboard() {
         return;
       }
 
-      // Fetch user's profile and sub status
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('default_message, google_review_link, stripe_subscription_status')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profile) {
-        if (profile.default_message) setCustomMessage(profile.default_message);
-        if (profile.google_review_link) setGoogleLink(profile.google_review_link);
-        if (profile.stripe_subscription_status) setSubscriptionStatus(profile.stripe_subscription_status);
-      } else {
-        setCustomMessage("Thanks for choosing us! We'd love if you could leave a quick 5-star review here:");
+      // Fetch user's profile and sub status securely via backend to bypass RLS restrictions
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: session.user.id })
+        });
+        const { profile } = await res.json();
+        
+        if (profile) {
+          if (profile.default_message) setCustomMessage(profile.default_message);
+          if (profile.google_review_link) setGoogleLink(profile.google_review_link);
+          if (profile.stripe_subscription_status) setSubscriptionStatus(profile.stripe_subscription_status);
+        } else {
+          setCustomMessage("Thanks for choosing us! We'd love if you could leave a quick 5-star review here:");
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile", err);
       }
 
       // BULLETPROOF UNLOCK: If returning from Paystack checkout, force unlock immediately.
