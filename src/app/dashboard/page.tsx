@@ -27,6 +27,7 @@ import {
   ArrowLeft,
   Check
 } from "lucide-react";
+import { SettingsModal } from "../components/modals/SettingsModal";
 
 interface RequestItem {
   id: string;
@@ -39,6 +40,7 @@ interface RequestItem {
 
 export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [googleLink, setGoogleLink] = useState("");
@@ -652,10 +654,10 @@ export default function Dashboard() {
               <Building2 size={18} className="text-emerald-700" />
               <span>Overview</span>
             </Link>
-            <Link href="/settings" className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 text-slate-600 hover:text-slate-950 rounded-lg text-sm font-medium transition">
+            <button onClick={() => setIsSettingsOpen(true)} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 text-slate-600 hover:text-slate-950 rounded-lg text-sm font-medium transition">
               <Settings size={18} />
               <span>Settings</span>
-            </Link>
+            </button>
             <div className="pt-6">
               <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-3 mb-2">Client Links</div>
               <button disabled className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-400 cursor-not-allowed rounded-lg text-sm font-medium transition">
@@ -779,10 +781,10 @@ export default function Dashboard() {
                   <p className="text-xs text-slate-400 mt-0.5">Send your customized template link instantly.</p>
                 </div>
                 {!googleLink && (
-                  <Link href="/settings" className="text-xs font-bold text-red-600 bg-red-50 border border-red-100 px-3 py-1 rounded-lg flex items-center gap-1.5 animate-pulse">
+                  <button onClick={() => setIsSettingsOpen(true)} className="text-xs font-bold text-red-600 bg-red-50 border border-red-100 px-3 py-1 rounded-lg flex items-center gap-1.5 animate-pulse">
                     <AlertCircle size={12} />
                     <span>Configure link</span>
-                  </Link>
+                  </button>
                 )}
               </div>
               
@@ -959,6 +961,7 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }
